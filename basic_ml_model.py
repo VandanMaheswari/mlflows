@@ -27,7 +27,7 @@ def get_data():
         raise e    
     
    
-def evaluate(y_true,y_pred):
+def evaluate(y_true,y_pred,pred_prob):
     # mae=mean_absolute_error(y_true, y_pred)
     # mse=mean_squared_error(y_true, y_pred)
     # rmse=np.sqrt(mean_squared_error(y_true, y_pred))
@@ -40,7 +40,7 @@ def evaluate(y_true,y_pred):
     
     return accuracy , rc_score
 
-def main():
+def main(n_estimators,max_depth):
     df = get_data()
     
     # train test split
@@ -59,14 +59,23 @@ def main():
     # lr=ElasticNet()
     # lr.fit(X_train, y_train)
     # pred=lr.predict(X_test)
+    with mlflow.start_run():
+      rf=RandomForestClassifier(n_estimators=n_estimators,max_depth=max_depth)
+      rf.fit(X_train, y_train)
+      pred=rf.predict(X_test)
     
-    rf=RandomForestClassifier(n_estimators=n_estimators,max_depth=max_depth)
-    rf.fit(X_train, y_train)
-    pred=rf.predict(X_test)
+      pred_prob=rf.predict_proba(X_test)
     
-    pred_prob=rf.predict_proba(X_test)
-    
-    accuracy , rc_score=evaluate(y_test,pred,pred_prob)
+      accuracy , rc_score=evaluate(y_test,pred,pred_prob)
+      
+      mlflow.log_param("n_estimators",n_estimators)
+      mlflow.log_param("max_depth",max_depth)
+        
+      mlflow.log_metric("accuracy",accuracy)
+      mlflow.log_metric("roc_auc_score",rc_score)
+        
+      #mlflow model logging
+      mlflow.sklearn.log_model(rf,"randomforestmodel")
     
     
     
@@ -75,7 +84,7 @@ def main():
     # mae,mse,rmse,r2=evaluate(y_test,pred)
     # print(f"mean absolute error {mae}, mean squared error {mse}, root mean squared error {rmse}, r2_score {r2}")
 
-    print(f"accuracy {accuracy}, roc_auc_score {rc_score}")
+      print(f"accuracy {accuracy}, roc_auc_score {rc_score}")
  
 if __name__ == '__main__':
     args=argparse.ArgumentParser()
